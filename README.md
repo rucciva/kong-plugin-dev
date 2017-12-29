@@ -32,7 +32,7 @@ docker run \
 docker-compose up -d postgress && docker-compose logs -f postgress
 # wait until it's ready and press Ctrl+C
 docker-compose up migrator
-docker-compose up -d kong && docker-compose logs -f kong
+docker-compose up --build -d kong && docker-compose logs -f kong
 # add mockbin API
 curl -i -X POST \
   --url http://localhost:8001/apis/ \
