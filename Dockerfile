@@ -1,0 +1,1 @@
+FROM rucciva/kong-dev-onbuild:0.0.2

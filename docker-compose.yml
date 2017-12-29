@@ -1,0 +1,35 @@
+version: "3.4"
+services:
+  postgres:
+    image: postgres:9.4
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=kong
+      - POSTGRES_USER=kong
+    # volumes:
+      # - postgress:/var/lib/postgresql/data
+  migrator:
+    image: kong:0.11.2-alpine
+    environment:
+      - KONG_DATABASE=postgres
+      - KONG_PG_HOST=postgres
+    command: "kong migrations up"
+  kong:
+    build: .
+    image: rucciva/kong-dev-with-plugins
+    environment:
+      - KONG_DATABASE=postgres
+      - KONG_PG_HOST=postgres
+      - MOBDEBUG_SERVER=docker.for.mac.localhost
+      # - MOBDEBUG_CONTEXT=access
+    ports:
+      - 8000:8000
+      - 8443:8443
+      - 8001:8001
+      - 8444:8444
+    volumes:
+      - ./volumes/kong/usr/local/share/lua/5.1:/usr/local/share/lua/5.1
+      - ./volumes/kong/prefix:/prefix
+      - ./volumes/kong/tmp/kong:/tmp/kong
+# volumes:
+  # postgres:
