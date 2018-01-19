@@ -29,7 +29,7 @@ docker run \
 ## Preparation
 
 ```bash
-docker-compose up -d postgress && docker-compose logs -f postgress
+docker-compose up -d postgres && docker-compose logs -f postgres
 # wait until it's ready and press Ctrl+C
 docker-compose up migrator
 docker-compose up --build -d kong && docker-compose logs -f kong
