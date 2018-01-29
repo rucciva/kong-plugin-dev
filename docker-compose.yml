@@ -22,6 +22,7 @@ services:
       - KONG_PG_HOST=postgres
       - MOBDEBUG_SERVER=docker.for.mac.localhost
       - KONG_ADMIN_LISTEN=0.0.0.0:8001
+      - KONG_TRUSTED_IPS=0.0.0.0/0,::/0
       # - MOBDEBUG_CONTEXT=access
     ports:
       - 8000:8000
