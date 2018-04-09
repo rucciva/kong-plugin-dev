@@ -1,23 +1,28 @@
 local helpers = require "spec.helpers"
 
 describe("Demo-Plugin: myplugin (access)", function()
-  local client
+  local proxy_client
 
   setup(function()
-    local api1 = assert(helpers.dao.apis:insert { 
-        name = "api-1", 
-        hosts = { "test1.com" }, 
-        upstream_url = "http://mockbin.com",
+    local bp = helpers.get_db_utils()
+
+    -- create route that point to default service (local nginx listen in 127.0.0.1:15555)
+    local route = bp.routes:insert({
+      hosts = { "test1.com" },
     })
 
-    assert(helpers.dao.plugins:insert {
-      api_id = api1.id,
-      name = "myplugin",
-    })
+    -- add plugin to the api
+    bp.plugins:insert {
+      name     = "myplugin",
+      route_id = route.id,
+    }
 
-    -- start kong, while setting the config item `custom_plugins` to make sure our
-    -- plugin gets loaded
-    assert(helpers.start_kong {custom_plugins = "myplugin"})
+    -- start kong and custom mock service
+    assert(helpers.start_kong({
+      custom_plugins = "myplugin",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
+
   end)
 
   teardown(function()
@@ -25,42 +30,35 @@ describe("Demo-Plugin: myplugin (access)", function()
   end)
 
   before_each(function()
-    client = helpers.proxy_client()
+    proxy_client = helpers.proxy_client()
   end)
 
   after_each(function()
-    if client then client:close() end
+    if proxy_client then
+      proxy_client:close()
+    end
   end)
 
-  describe("request", function()
-    it("gets a 'hello-world' header", function()
-      local r = assert(client:send {
-        method = "GET",
-        path = "/request",  -- makes mockbin return the entire request
+  describe("myplugin", function()
+    local r
+    it("successfully send the request", function ()
+      r = proxy_client:get("/request", {
         headers = {
-          host = "test1.com"
+          ["Host"] = "test1.com",
         }
       })
-      -- validate that the request succeeded, response status 200
       assert.response(r).has.status(200)
+    end)
+
+    it("gets a 'hello-world' header", function()   
+      -- validate that the request succeeded, response status 200
       -- now check the request (as echoed by mockbin) to have the header
       local header_value = assert.request(r).has.header("hello-world")
       -- validate the value of that header
       assert.equal("this is on a request", header_value)
     end)
-  end)
 
-  describe("response", function()
-    it("gets a 'bye-world' header", function()
-      local r = assert(client:send {
-        method = "GET",
-        path = "/request",  -- makes mockbin return the entire request
-        headers = {
-          host = "test1.com"
-        }
-      })
-      -- validate that the request succeeded, response status 200
-      assert.response(r).has.status(200)
+    it("gets a 'bye-world' header", function ()
       -- now check the response to have the header
       local header_value = assert.response(r).has.header("bye-world")
       -- validate the value of that header
