@@ -6,13 +6,12 @@ services:
     environment:
       - POSTGRES_DB=kong
       - POSTGRES_USER=kong
-    # volumes:
-      # - postgress:/var/lib/postgresql/data
   migrator:
-    image: kong:0.12-alpine
+    image: kong:0.13.0-alpine
     environment:
       - KONG_DATABASE=postgres
       - KONG_PG_HOST=postgres
+      - KONG_PG_DATABASE=kong
     command: "kong migrations up"
   kong:
     build: .
@@ -23,7 +22,6 @@ services:
       - MOBDEBUG_SERVER=docker.for.mac.localhost
       - KONG_ADMIN_LISTEN=0.0.0.0:8001
       - KONG_TRUSTED_IPS=0.0.0.0/0,::/0
-      # - MOBDEBUG_CONTEXT=access
     ports:
       - 8000:8000
       - 8443:8443
@@ -32,6 +30,20 @@ services:
     volumes:
       - ./volumes/kong/usr/local/share/lua/5.1:/usr/local/share/lua/5.1
       - ./volumes/kong/prefix:/prefix
-      - ./volumes/kong/tmp/kong:/tmp/kong
-# volumes:
-  # postgres:
+  kong_busted:
+    build: .
+    image: rucciva/kong-dev-with-plugins-busted
+    environment:
+      - SPEC_KONG_DATABASE=postgres
+      - SPEC_KONG_PG_HOST=172.18.0.2  # somehow the test cannot use docker assigned hostname to connect to the postgress
+      - SPEC_KONG_PG_DATABASE=kong
+      - SPEC_KONG_LOG_LEVEL=debug
+      - SPEC_KONG_DNS_RESOLVER=8.8.8.8
+      - SPEC_KONG_PROXY_ACCESS_LOG=/proc/1/fd/1
+      - SPEC_KONG_PROXY_ERROR_LOG=/proc/1/fd/2
+      - SPEC_KONG_ADMIN_ACCESS_LOG=/proc/1/fd/2
+      - SPEC_KONG_ADMIN_ERROR_LOG=/proc/1/fd/2
+    volumes:
+      - ./kong/plugins/myplugin:/usr/local/src/kong/kong/plugins/myplugin
+      - ./spec/myplugin:/usr/local/src/kong/spec/myplugin
+    command: bash -c 'cd $$KONG_SRC_PATH && bin/busted -v  spec/myplugin'

@@ -10,7 +10,7 @@ up and running quickly using **Docker** for developing your own plugins.
 To change the current plugin name, use the rename.sh script
 
 ```bash
-chmod +x ./rename.sh && ./rename.sh current_plugin_name new_plugin_name [new_plugin_version]
+chmod +x ./rename.sh && ./rename.sh <current_plugin_name> <new_plugin_name> [<new_plugin_version>]
 ```
 
 If you are not on linux or somehow not able to run this script, utilize docker and run this script:
@@ -23,7 +23,7 @@ docker run \
     -w /tmp/rename \
     --entrypoint /bin/bash \
     ubuntu:16.04 \
-    -c "chmod +x ./rename.sh && ./rename.sh current_plugin_name new_plugin_name [new_plugin_version]"
+    -c "chmod +x ./rename.sh && ./rename.sh <current_plugin_name> <new_plugin_name> [<new_plugin_version>]"
 ```
 
 ## Preparation
@@ -57,3 +57,14 @@ curl -i http://localhost:8000
 1. Click "Project" > "Start Debugger Server"
 
 1. Invoke the mockbin API
+
+## Testing with busted
+
+1. specify the right environment setting for `kong_busted` service in `docker-compose.yml`, especially `SPEC_KONG_PG_HOST` since it somehow cannot use *docker-assigned* hostname. Also make sure that any occurance of `myplugin` is replaced by your plugin name
+    - run `docker inspect <postgres container name>` to find out the ip address of postgres container
+    - any environment variables started with `SPEC_KONG_` will be converted into appropriate kong setting. e.g. `SPEC_KONG_ADMIN_LISTEN` will be converted into `admin_listen`
+1. to start your plugin test after the database is ready, run:
+
+```bash
+docker-compose up kong_busted
+```

@@ -60,3 +60,10 @@ else
     mv $f kong-plugin-$new_name-$new_version.rockspec
 fi
 echo "== modifying and renaming rockspec file success"
+
+# rename docker-compose.yml
+echo "== modifyning docker-compose.yml"
+
+sed -i "s/$old_name/$new_name/" docker-compose.yml
+
+echo "== modifyning docker-compose.yml success "
