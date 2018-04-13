@@ -26,7 +26,7 @@ docker run \
     -c "chmod +x ./rename.sh && ./rename.sh <current_plugin_name> <new_plugin_name> [<new_plugin_version>]"
 ```
 
-## <a name="preparation">Preparation</a>
+## Preparation
 
 The following command should be run manually once before using `kong` or `kong_busted` service. Note that after `postgres` service have been started successfuly (by examining the output of *docker-compose logs postgres*), press **ctrl+c** to exit from *docker-compose logs postgres* and start the `migrator`
 
