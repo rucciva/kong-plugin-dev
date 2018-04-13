@@ -7,7 +7,7 @@ up and running quickly using **Docker** for developing your own plugins.
 
 ## Renaming the plugin
 
-To change the current plugin name, use the rename.sh script
+To change the current plugin name, use the rename.sh script. Note that the default current plugin name of this repository is `myplugin`
 
 ```bash
 chmod +x ./rename.sh && ./rename.sh <current_plugin_name> <new_plugin_name> [<new_plugin_version>]
@@ -28,22 +28,36 @@ docker run \
 
 ## Preparation
 
+The following command should be run manually once before using `kong` or `kong_busted` service. Note that after `postgres` service have been started successfuly (by examining the output of *docker-compose logs postgres*), press **ctrl+c** to exit from *docker-compose logs postgres* and start the `migrator`
+
 ```bash
-docker-compose up -d postgres && docker-compose logs -f postgres
-# wait until it's ready and press Ctrl+C
+docker-compose up -d postgres && \
+docker-compose logs -f postgres; \
 docker-compose up migrator
+```
+
+## Runing kong service
+
+the following is an example how to run the `kong` service, add an api that point to mockbin.org, and invoke the api
+
+```bash
 docker-compose up --build -d kong && docker-compose logs -f kong
+
 # add mockbin API
 curl -i -X POST \
   --url http://localhost:8001/apis/ \
   --data 'name=mockbin' \
   --data 'upstream_url=http://mockbin.org/request' \
   --data 'uris=/'
+
 # add mobdebug plugin
 curl -i -X POST \
   --url http://localhost:8001/apis/mockbin/plugins/ \
   --data 'name=mobdebug'
+
 # add your plugin
+
+
 # try the mockbin API
 curl -i http://localhost:8000
 ```
@@ -60,11 +74,16 @@ curl -i http://localhost:8000
 
 ## Testing with busted
 
-1. specify the right environment setting for `kong_busted` service in `docker-compose.yml`, especially `SPEC_KONG_PG_HOST` since it somehow cannot use *docker-assigned* hostname. Also make sure that any occurance of `myplugin` is replaced by your plugin name
-    - run `docker inspect <postgres container name>` to find out the ip address of postgres container
-    - any environment variables started with `SPEC_KONG_` will be converted into appropriate kong setting. e.g. `SPEC_KONG_ADMIN_LISTEN` will be converted into `admin_listen`
-1. to start your plugin test after the database is ready, run:
+1. specify the right config for `kong_dev_net` docker network to prevent conflit with your existing docker network. If subnet must be changed, than service configuration under the following section must also be changed
 
-```bash
-docker-compose up kong_busted
-```
+    ```yaml
+    networks:
+      kong_dev_net:
+        ipv4_address:
+    ```
+
+1. to start your plugin test after completing the step from [Preparation](#preparation), run:
+
+    ```bash
+    docker-compose up kong_busted
+    ```
