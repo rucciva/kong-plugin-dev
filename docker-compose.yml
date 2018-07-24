@@ -10,7 +10,7 @@ services:
       kong_dev_net:
         ipv4_address: 172.16.1.2
   migrator:
-    image: kong:0.13.0-alpine
+    image: kong:0.14.0-alpine
     environment:
       - KONG_DATABASE=postgres
       - KONG_PG_HOST=postgres

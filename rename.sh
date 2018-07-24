@@ -51,6 +51,7 @@ fi
 echo "== modifying and renaming rockspec file"
 f=`ls | grep $old_name | head -n 1`
 sed -i "s/package = \"kong-plugin-$old_name\"/package = \"kong-plugin-$new_name\"/" $f
+
 if [ -z "$new_version" ]; then
     # no change on version
     mv $f `echo $f | sed "s/kong-plugin-$old_name/kong-plugin-$new_name/"`
@@ -64,6 +65,6 @@ echo "== modifying and renaming rockspec file success"
 # rename docker-compose.yml
 echo "== modifyning docker-compose.yml"
 
-sed -i "s/$old_name/$new_name/" docker-compose.yml
+sed -i "s/$old_name/$new_name/g" docker-compose.yml
 
 echo "== modifyning docker-compose.yml success "

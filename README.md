@@ -44,19 +44,29 @@ the following is an example how to run the `kong` service, add an api that point
 docker-compose up --build -d kong && docker-compose logs -f kong
 
 # add mockbin API
-curl -i -X POST \
-  --url http://localhost:8001/apis/ \
-  --data 'name=mockbin' \
-  --data 'upstream_url=http://mockbin.org/request' \
-  --data 'uris=/'
+curl -i -X PUT \
+  --url http://localhost:8001/services/18f68371-726a-4e25-a7c9-bf012d096d85 \
+  --data "protocol=http" \
+  --data "host=mockbin.org" \
+  --data "port=80" \
+  --data "path=/request"
+
+curl -i -X PUT \
+  --url http://localhost:8001/routes/1a5cc9b8-046a-4b47-a2a3-d0614004fc73 \
+  --data "paths[]=/" \
+  --data "service.id=18f68371-726a-4e25-a7c9-bf012d096d85"
+
 
 # add mobdebug plugin
 curl -i -X POST \
-  --url http://localhost:8001/apis/mockbin/plugins/ \
-  --data 'name=mobdebug'
+  --url http://localhost:8001/plugins/ \
+  --data "name=mobdebug" \
+  --data "route_id=1a5cc9b8-046a-4b47-a2a3-d0614004fc73"
 
 # add your plugin
-
+curl -i -X POST \
+  --url http://localhost:8001/plugins/ \
+  --data 'name=myplugin'
 
 # try the mockbin API
 curl -i http://localhost:8000
