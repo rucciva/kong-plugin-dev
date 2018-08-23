@@ -1,1 +1,1 @@
-FROM rucciva/kong-dev-onbuild:0.14.0
+FROM rucciva/kong-dev-onbuild:0.14.1
