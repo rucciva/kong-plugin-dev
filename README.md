@@ -84,14 +84,6 @@ curl -i http://localhost:8000
 
 ## Testing with busted
 
-1. specify the right config for `kong_dev_net` docker network to prevent conflit with your existing docker network. If subnet must be changed, than service configuration under the following section must also be changed
-
-    ```yaml
-    networks:
-      kong_dev_net:
-        ipv4_address:
-    ```
-
 1. to start your plugin test after completing the step from [Preparation](#preparation), run:
 
     ```bash
