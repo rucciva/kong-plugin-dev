@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:10.1-alpine
+    environment:
+      - POSTGRES_DB=kong
+      - POSTGRES_USER=kong
+
+pipeline:
+  wait-postgres:
+    image: postgres:10.1-alpine
+    commands:
+      - until psql -h postgres -U kong -d kong  -c "select 1"; do sleep 1; done
+  
+  migrate:
+    image: kong:0.14.1-alpine
+    environment:
+      - KONG_DATABASE=postgres
+      - KONG_PG_HOST=postgres
+      - KONG_PG_DATABASE=kong
+    commands: 
+      - kong migrations up
+    
+  test:
+    image: rucciva/kong-dev-onbuild:0.14.1
+    pull: true
+    environment:
+      - SPEC_KONG_DATABASE=postgres
+      - SPEC_KONG_PG_HOST=postgres
+      - SPEC_KONG_PG_DATABASE=kong
+      - SPEC_KONG_LOG_LEVEL=debug
+      - SPEC_KONG_DNS_RESOLVER=
+      - SPEC_KONG_PROXY_ACCESS_LOG=/proc/1/fd/1
+      - SPEC_KONG_PROXY_ERROR_LOG=/proc/1/fd/2
+      - SPEC_KONG_ADMIN_ACCESS_LOG=/proc/1/fd/2
+      - SPEC_KONG_ADMIN_ERROR_LOG=/proc/1/fd/2
+      - SPEC_PROXY_TIMEOUT=100000
+    commands:
+      - ln -s $$PWD/kong/plugins/myplugin /usr/local/src/kong/kong/plugins/myplugin
+      - ln -s $$PWD/spec/myplugin /usr/local/src/kong/spec/myplugin
+      - cd /usr/local/src/kong/ && bin/busted -v spec/myplugin
+
+  analyze-code-using-sonarqube:
+    image: rucciva/drone-sonar-plugin
+    pull: true
+    secrets: [sonar_host, sonar_token]
+    add_branch_prefix: true
+    
+  publish-build-record:
+    image: rucciva/drone-elasticsearch-plugin
+    pull: true
+    elasticsearch_index: drone    
+    elasticsearch_index_postfix_command: date -d @`echo $DRONE_JOB_STARTED` +-%Y
+    secrets: [ elasticsearch_url, elasticsearch_username, elasticsearch_password ]
+    when:
+      status:  [ failure, success ]

@@ -62,7 +62,7 @@ end --]]
 
 ---[[ runs in the 'header_filter_by_lua_block'
 function plugin:header_filter(plugin_conf)
-    plugin.super.access(self)
+    plugin.super.header_filter(self)
 
     -- your custom code here, for example;
     ngx.header['Bye-World'] = 'this is on the response'
@@ -70,14 +70,14 @@ end --]]
 
 --[[ runs in the 'body_filter_by_lua_block'
 function plugin:body_filter(plugin_conf)
-  plugin.super.access(self)
+  plugin.super.body_filter(self)
 
   -- your custom code here
 
 end --]]
 --[[ runs in the 'log_by_lua_block'
 function plugin:log(plugin_conf)
-  plugin.super.access(self)
+  plugin.super.body_filter(self)
 
   -- your custom code here
 

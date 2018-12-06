@@ -50,7 +50,7 @@ describe("Demo-Plugin: myplugin (access)", function()
       assert.response(r).has.status(200)
     end)
 
-    it("gets a 'hello-world' header", function()   
+    it("gets a 'hello-world' header", function()
       -- validate that the request succeeded, response status 200
       -- now check the request (as echoed by mockbin) to have the header
       local header_value = assert.request(r).has.header("hello-world")
