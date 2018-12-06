@@ -19,7 +19,7 @@ describe("Demo-Plugin: myplugin (access)", function()
 
     -- start kong and custom mock service
     assert(helpers.start_kong({
-      custom_plugins = "myplugin",
+      plugins = "bundled,myplugin",
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
 
