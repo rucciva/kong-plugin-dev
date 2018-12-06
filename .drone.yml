@@ -35,6 +35,7 @@ pipeline:
       - SPEC_KONG_ADMIN_ERROR_LOG=/proc/1/fd/2
       - SPEC_PROXY_TIMEOUT=100000
     commands:
+      - /entrypoint.sh
       - ln -s $$PWD/kong/plugins/myplugin /usr/local/src/kong/kong/plugins/myplugin
       - ln -s $$PWD/spec/myplugin /usr/local/src/kong/spec/myplugin
       - cd /usr/local/src/kong/ && bin/busted -v spec/myplugin
@@ -44,6 +45,8 @@ pipeline:
     pull: true
     secrets: [sonar_host, sonar_token]
     add_branch_prefix: true
+    when:
+      status:  [ failure, success ]
     
   publish-build-record:
     image: rucciva/drone-elasticsearch-plugin
