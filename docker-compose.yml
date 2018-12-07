@@ -8,6 +8,9 @@ services:
       - POSTGRES_USER=kong
   migrator:
     image: kong:0.14.1-alpine
+    restart: on-failure
+    depends_on: 
+      - postgres
     environment:
       - KONG_DATABASE=postgres
       - KONG_PG_HOST=postgres
@@ -16,6 +19,10 @@ services:
   kong:
     build: .
     image: rucciva/kong-plugin-dev
+    restart: unless-stopped
+    depends_on: 
+      - postgres
+      - migrator
     environment:
       - KONG_DATABASE=postgres
       - KONG_PG_HOST=postgres
@@ -30,9 +37,12 @@ services:
     volumes:
       - ./volumes/kong/usr/local/share/lua/5.1:/usr/local/share/lua/5.1
       - ./volumes/kong/prefix:/prefix
-  kong_busted:
+  test:
     build: .
     image: rucciva/kong-plugin-dev
+    depends_on: 
+      - migrator
+      - postgres
     environment:
       - SPEC_KONG_DATABASE=postgres
       - SPEC_KONG_PG_HOST=postgres
