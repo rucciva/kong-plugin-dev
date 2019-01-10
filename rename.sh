@@ -64,7 +64,10 @@ echo "== modifying and renaming rockspec file success"
 
 # rename docker-compose.yml
 echo "== modifyning docker-compose.yml"
-
 sed -i "s/$old_name/$new_name/g" docker-compose.yml
+echo "== modifyning docker-compose.yml success "
 
+# rename .drone.yml
+echo "== modifyning docker-compose.yml"
+sed -i "s/$old_name/$new_name/g" .drone.yml
 echo "== modifyning docker-compose.yml success "
