@@ -7,7 +7,8 @@ services:
       - POSTGRES_DB=kong
       - POSTGRES_USER=kong
   migrator:
-    image: kong:0.14.1-alpine
+    build: .
+    image: rucciva/kong-plugin-dev
     restart: on-failure
     depends_on: 
       - postgres
@@ -15,7 +16,7 @@ services:
       - KONG_DATABASE=postgres
       - KONG_PG_HOST=postgres
       - KONG_PG_DATABASE=kong
-    command: "kong migrations up"
+    command: "kong migrations bootstrap && kong migrations finish"
   kong:
     build: .
     image: rucciva/kong-plugin-dev

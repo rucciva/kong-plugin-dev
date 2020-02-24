@@ -22,7 +22,7 @@ docker run \
     -v $PWD:/tmp/rename \
     -w /tmp/rename \
     --entrypoint /bin/bash \
-    ubuntu:16.04 \
+    debian:stretch-slim \
     -c "chmod +x ./rename.sh && ./rename.sh <current_plugin_name> <new_plugin_name> [<new_plugin_version>]"
 ```
 
