@@ -12,16 +12,18 @@ pipeline:
       - until psql -h postgres -U kong -d kong  -c "select 1"; do sleep 1; done
   
   migrate:
-    image: kong:0.14.1-alpine
+    image: kong:2.0.1-alpine
     environment:
       - KONG_DATABASE=postgres
       - KONG_PG_HOST=postgres
       - KONG_PG_DATABASE=kong
     commands: 
+      - kong migrations bootstrap
       - kong migrations up
+      - kong migrations finish
     
   test:
-    image: rucciva/kong-dev-onbuild:0.14.1
+    image: rucciva/kong-dev-onbuild:2.0.1
     pull: true
     environment:
       - SPEC_KONG_DATABASE=postgres

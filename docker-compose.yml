@@ -16,7 +16,7 @@ services:
       - KONG_DATABASE=postgres
       - KONG_PG_HOST=postgres
       - KONG_PG_DATABASE=kong
-    command: "kong migrations bootstrap && kong migrations finish"
+    command: "kong migrations bootstrap && kong migrations up && kong migrations finish"
   kong:
     build: .
     image: rucciva/kong-plugin-dev
