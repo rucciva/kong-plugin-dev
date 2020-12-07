@@ -1,60 +1,82 @@
-services:
-  postgres:
-    image: postgres:10.1-alpine
-    environment:
-      - POSTGRES_DB=kong
-      - POSTGRES_USER=kong
+---
+kind: pipeline
+name: default
+type: docker
 
-pipeline:
-  wait-postgres:
+steps:
+  - name: postgres
+    image: postgres:10.1-alpine
+    detach: true 
+    environment:
+      POSTGRES_DB: kong
+      POSTGRES_USER: kong
+  
+  - name: cassandra
+    image: cassandra:3.11
+    detach: true 
+    environment:
+      CASSANDRA_CLUSTER_NAME: kong
+      CASSANDRA_DC: DC1
+      CASSANDRA_RACK: RACK1
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+  
+  - name: wait postgres
     image: postgres:10.1-alpine
     commands:
-      - until psql -h postgres -U kong -d kong  -c "select 1"; do sleep 1; done
+      - until 
+          psql -h postgres -U kong -d kong  -c "select 1"; 
+        do 
+          sleep 1; 
+        done
+
+  - name: wait cassandra
+    image: cassandra:3.11
+    commands:
+      - until cqlsh cassandra; do sleep 1; done
   
-  migrate:
-    image: kong:2.0.1-alpine
+  - name: migrate
+    image: kong:2.1.4-alpine
     environment:
-      - KONG_DATABASE=postgres
-      - KONG_PG_HOST=postgres
-      - KONG_PG_DATABASE=kong
+      KONG_PG_HOST: postgres
+      KONG_PG_DATABASE: kong
+      KONG_CASSANDRA_CONTACT_POINTS: cassandra
+      KONG_CASSANDRA_DATA_CENTERS: DC1:1
+      KONG_CASSANDRA_REPL_STRATEGY: NetworkTopologyStrategy
+      KONG_CASSANDRA_LOCAL_DATACENTER: DC1
     commands: 
-      - kong migrations bootstrap
-      - kong migrations up
-      - kong migrations finish
+      - KONG_DATABASE=postgres kong migrations bootstrap
+      - KONG_DATABASE=cassandra kong migrations bootstrap
     
-  test:
-    image: rucciva/kong-dev-onbuild:2.0.1
-    pull: true
+  - name: test
+    image: rucciva/kong-dev-onbuild:2.1.4
+    pull: "always"
     environment:
-      - SPEC_KONG_DATABASE=postgres
-      - SPEC_KONG_PG_HOST=postgres
-      - SPEC_KONG_PG_DATABASE=kong
-      - SPEC_KONG_LOG_LEVEL=debug
-      - SPEC_KONG_DNS_RESOLVER=
-      - SPEC_KONG_PROXY_ACCESS_LOG=/proc/1/fd/1
-      - SPEC_KONG_PROXY_ERROR_LOG=/proc/1/fd/2
-      - SPEC_KONG_ADMIN_ACCESS_LOG=/proc/1/fd/2
-      - SPEC_KONG_ADMIN_ERROR_LOG=/proc/1/fd/2
-      - SPEC_PROXY_TIMEOUT=100000
+      SPEC_KONG_PG_HOST: postgres
+      SPEC_KONG_PG_DATABASE: kong
+      SPEC_KONG_CASSANDRA_CONTACT_POINTS: cassandra
+      SPEC_KONG_CASSANDRA_DATA_CENTERS: DC1:1
+      SPEC_KONG_CASSANDRA_REPL_STRATEGY: NetworkTopologyStrategy
+      SPEC_KONG_CASSANDRA_LOCAL_DATACENTER: DC1
+      SPEC_KONG_LOG_LEVEL: info
+      SPEC_KONG_DNS_RESOLVER: " "
+      SPEC_KONG_PROXY_ACCESS_LOG: /proc/1/fd/1
+      SPEC_KONG_PROXY_ERROR_LOG: /proc/1/fd/2
+      SPEC_KONG_ADMIN_ACCESS_LOG: /proc/1/fd/1
+      SPEC_KONG_ADMIN_ERROR_LOG: /proc/1/fd/2
     commands:
       - /entrypoint.sh
-      - ln -s $$PWD/kong/plugins/myplugin /usr/local/src/kong/kong/plugins/myplugin
-      - ln -s $$PWD/spec/myplugin /usr/local/src/kong/spec/myplugin
+      - ln -s $$DRONE_WORKSPACE/kong/plugins/myplugin /usr/local/src/kong/kong/plugins/myplugin
+      - ln -s $$DRONE_WORKSPACE/spec/myplugin /usr/local/src/kong/spec/myplugin
+      - luarocks make
       - cd /usr/local/src/kong/ && bin/busted -v spec/myplugin
 
-  analyze-code-using-sonarqube:
-    image: rucciva/drone-sonar-plugin
-    pull: true
-    secrets: [sonar_host, sonar_token]
-    add_branch_prefix: true
+  - name: publish rock
+    image: rucciva/kong-dev-onbuild:2.1.4
+    environment:
+      LUAROCKS_API_KEY:
+          from_secret: LUAROCKS_API_KEY
+    commands: 
+      - luarocks upload *.rockspec --api-key="$LUAROCKS_API_KEY"
     when:
-      status:  [ failure, success ]
-    
-  publish-build-record:
-    image: rucciva/drone-elasticsearch-plugin
-    pull: true
-    elasticsearch_index: drone    
-    elasticsearch_index_postfix_command: date -d @`echo $DRONE_JOB_STARTED` +-%Y
-    secrets: [ elasticsearch_url, elasticsearch_username, elasticsearch_password ]
-    when:
-      status:  [ failure, success ]
+      event: 
+        - tag

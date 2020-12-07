@@ -6,17 +6,48 @@ services:
     environment:
       - POSTGRES_DB=kong
       - POSTGRES_USER=kong
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      start_period: 3s
+      timeout: 5s
+      retries: 3
+  
+  cassandra:
+    image: cassandra:3.11
+    restart: unless-stopped
+    environment:
+      - CASSANDRA_CLUSTER_NAME=kong
+      - CASSANDRA_DC=DC1
+      - CASSANDRA_RACK=RACK1
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+    healthcheck:
+      test: ["CMD", "cqlsh", "cassandra"]
+      start_period: 5s
+      timeout: 5s
+      retries: 3
+
   migrator:
     build: .
     image: rucciva/kong-plugin-dev
     restart: on-failure
     depends_on: 
-      - postgres
+      postgres:
+        condition: service_healthy
+      cassandra:
+        condition: service_healthy
     environment:
-      - KONG_DATABASE=postgres
       - KONG_PG_HOST=postgres
       - KONG_PG_DATABASE=kong
-    command: "kong migrations bootstrap && kong migrations up && kong migrations finish"
+      - KONG_CASSANDRA_CONTACT_POINTS=cassandra
+      - KONG_CASSANDRA_DATA_CENTERS=DC1:1
+      - KONG_CASSANDRA_REPL_STRATEGY=NetworkTopologyStrategy
+      - KONG_CASSANDRA_LOCAL_DATACENTER=DC1
+    command: 
+      - /bin/bash 
+      - -c 
+      - KONG_DATABASE=postgres kong migrations bootstrap &&
+        KONG_DATABASE=cassandra kong migrations bootstrap
+
   kong:
     build: .
     image: rucciva/kong-plugin-dev
@@ -38,6 +69,7 @@ services:
     volumes:
       - ./volumes/kong/usr/local/share/lua/5.1:/usr/local/share/lua/5.1
       - ./volumes/kong/prefix:/prefix
+
   test:
     build: .
     image: rucciva/kong-plugin-dev
