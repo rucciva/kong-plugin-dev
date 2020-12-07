@@ -20,7 +20,7 @@ if [[ $# -lt 2 ]] ; then
         -v \$PWD:/tmp/rename \\
         -w /tmp/rename \\
         --entrypoint /bin/bash \\
-        ubuntu:16.04 \\
+        debian:stretch-slim \\
         -c "chmod +x ./rename.sh && ./rename.sh current_plugin_name new_plugin_name [new_plugin_version]"
 EOF
     echo
@@ -51,6 +51,7 @@ fi
 echo "== modifying and renaming rockspec file"
 f=`ls | grep $old_name | head -n 1`
 sed -i "s/package = \"kong-plugin-$old_name\"/package = \"kong-plugin-$new_name\"/" $f
+
 if [ -z "$new_version" ]; then
     # no change on version
     mv $f `echo $f | sed "s/kong-plugin-$old_name/kong-plugin-$new_name/"`
@@ -63,7 +64,10 @@ echo "== modifying and renaming rockspec file success"
 
 # rename docker-compose.yml
 echo "== modifyning docker-compose.yml"
+sed -i "s/$old_name/$new_name/g" docker-compose.yml
+echo "== modifyning docker-compose.yml success "
 
-sed -i "s/$old_name/$new_name/" docker-compose.yml
-
+# rename .drone.yml
+echo "== modifyning docker-compose.yml"
+sed -i "s/$old_name/$new_name/g" .drone.yml
 echo "== modifyning docker-compose.yml success "

@@ -6,22 +6,55 @@ services:
     environment:
       - POSTGRES_DB=kong
       - POSTGRES_USER=kong
-    networks:
-      kong_dev_net:
-        ipv4_address: 172.16.1.2
-  migrator:
-    image: kong:0.13.0-alpine
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      start_period: 3s
+      timeout: 5s
+      retries: 3
+  
+  cassandra:
+    image: cassandra:3.11
+    restart: unless-stopped
     environment:
-      - KONG_DATABASE=postgres
+      - CASSANDRA_CLUSTER_NAME=kong
+      - CASSANDRA_DC=DC1
+      - CASSANDRA_RACK=RACK1
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+    healthcheck:
+      test: ["CMD", "cqlsh", "cassandra"]
+      start_period: 5s
+      timeout: 5s
+      retries: 3
+
+  migrator:
+    build: .
+    image: rucciva/kong-plugin-dev
+    restart: on-failure
+    depends_on: 
+      postgres:
+        condition: service_healthy
+      cassandra:
+        condition: service_healthy
+    environment:
       - KONG_PG_HOST=postgres
       - KONG_PG_DATABASE=kong
-    command: "kong migrations up"
-    networks:
-      kong_dev_net:
-        ipv4_address: 172.16.1.3
+      - KONG_CASSANDRA_CONTACT_POINTS=cassandra
+      - KONG_CASSANDRA_DATA_CENTERS=DC1:1
+      - KONG_CASSANDRA_REPL_STRATEGY=NetworkTopologyStrategy
+      - KONG_CASSANDRA_LOCAL_DATACENTER=DC1
+    command: 
+      - /bin/bash 
+      - -c 
+      - KONG_DATABASE=postgres kong migrations bootstrap &&
+        KONG_DATABASE=cassandra kong migrations bootstrap
+
   kong:
     build: .
     image: rucciva/kong-plugin-dev
+    restart: unless-stopped
+    depends_on: 
+      - postgres
+      - migrator
     environment:
       - KONG_DATABASE=postgres
       - KONG_PG_HOST=postgres
@@ -36,18 +69,19 @@ services:
     volumes:
       - ./volumes/kong/usr/local/share/lua/5.1:/usr/local/share/lua/5.1
       - ./volumes/kong/prefix:/prefix
-    networks:
-      kong_dev_net:
-        ipv4_address: 172.16.1.4
-  kong_busted:
+
+  test:
     build: .
     image: rucciva/kong-plugin-dev
+    depends_on: 
+      - migrator
+      - postgres
     environment:
       - SPEC_KONG_DATABASE=postgres
-      - SPEC_KONG_PG_HOST=172.16.1.2
+      - SPEC_KONG_PG_HOST=postgres
       - SPEC_KONG_PG_DATABASE=kong
       - SPEC_KONG_LOG_LEVEL=debug
-      - SPEC_KONG_DNS_RESOLVER=8.8.8.8
+      - SPEC_KONG_DNS_RESOLVER=
       - SPEC_KONG_PROXY_ACCESS_LOG=/proc/1/fd/1
       - SPEC_KONG_PROXY_ERROR_LOG=/proc/1/fd/2
       - SPEC_KONG_ADMIN_ACCESS_LOG=/proc/1/fd/2
@@ -57,14 +91,3 @@ services:
       - ./spec/myplugin:/usr/local/src/kong/spec/myplugin
     working_dir: /usr/local/src/kong/
     command: bin/busted -v spec/myplugin
-    networks:
-      kong_dev_net:
-        ipv4_address: 172.16.1.5
-networks:
-  kong_dev_net:
-    driver: bridge
-    ipam:
-      driver: default
-      config:
-      -
-        subnet: 172.16.1.0/24

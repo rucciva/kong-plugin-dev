@@ -1,69 +1,101 @@
-local helpers = require "spec.helpers"
+local helpers = require 'spec.helpers'
 
-describe("Demo-Plugin: myplugin (access)", function()
-  local proxy_client
+describe(
+    'Demo-Plugin: myplugin (access)',
+    function()
+        local proxy_client
 
-  setup(function()
-    local bp = helpers.get_db_utils()
+        setup(
+            function()
+                local bp = helpers.get_db_utils(nil, nil, {'myplugin'})
 
-    -- create route that point to default service (local nginx listen in 127.0.0.1:15555)
-    local route = bp.routes:insert({
-      hosts = { "test1.com" },
-    })
+                -- create route that point to default service (local nginx listen in 127.0.0.1:15555)
+                local route =
+                    bp.routes:insert(
+                    {
+                        hosts = {'test1.com'}
+                    }
+                )
 
-    -- add plugin to the api
-    bp.plugins:insert {
-      name     = "myplugin",
-      route_id = route.id,
-    }
+                -- add plugin to the api
+                bp.plugins:insert {
+                    name = 'myplugin',
+                    route = {id = route.id}
+                }
 
-    -- start kong and custom mock service
-    assert(helpers.start_kong({
-      custom_plugins = "myplugin",
-      nginx_conf = "spec/fixtures/custom_nginx.template",
-    }))
+                -- start kong and custom mock service
+                assert(
+                    helpers.start_kong(
+                        {
+                            plugins = 'bundled,myplugin',
+                            nginx_conf = 'spec/fixtures/custom_nginx.template'
+                        }
+                    )
+                )
+            end
+        )
 
-  end)
+        teardown(
+            function()
+                helpers.stop_kong()
+            end
+        )
 
-  teardown(function()
-    helpers.stop_kong()
-  end)
+        before_each(
+            function()
+                proxy_client = helpers.proxy_client()
+            end
+        )
 
-  before_each(function()
-    proxy_client = helpers.proxy_client()
-  end)
+        after_each(
+            function()
+                if proxy_client then
+                    proxy_client:close()
+                end
+            end
+        )
 
-  after_each(function()
-    if proxy_client then
-      proxy_client:close()
+        describe(
+            'myplugin',
+            function()
+                local r
+                it(
+                    'successfully send the request',
+                    function()
+                        r =
+                            proxy_client:get(
+                            '/request',
+                            {
+                                headers = {
+                                    ['Host'] = 'test1.com'
+                                }
+                            }
+                        )
+                        assert.response(r).has.status(200)
+                    end
+                )
+
+                it(
+                    "gets a 'hello-world' header",
+                    function()
+                        -- validate that the request succeeded, response status 200
+                        -- now check the request (as echoed by mockbin) to have the header
+                        local header_value = assert.request(r).has.header('hello-world')
+                        -- validate the value of that header
+                        assert.equal('this is on a request', header_value)
+                    end
+                )
+
+                it(
+                    "gets a 'bye-world' header",
+                    function()
+                        -- now check the response to have the header
+                        local header_value = assert.response(r).has.header('bye-world')
+                        -- validate the value of that header
+                        assert.equal('this is on the response', header_value)
+                    end
+                )
+            end
+        )
     end
-  end)
-
-  describe("myplugin", function()
-    local r
-    it("successfully send the request", function ()
-      r = proxy_client:get("/request", {
-        headers = {
-          ["Host"] = "test1.com",
-        }
-      })
-      assert.response(r).has.status(200)
-    end)
-
-    it("gets a 'hello-world' header", function()   
-      -- validate that the request succeeded, response status 200
-      -- now check the request (as echoed by mockbin) to have the header
-      local header_value = assert.request(r).has.header("hello-world")
-      -- validate the value of that header
-      assert.equal("this is on a request", header_value)
-    end)
-
-    it("gets a 'bye-world' header", function ()
-      -- now check the response to have the header
-      local header_value = assert.response(r).has.header("bye-world")
-      -- validate the value of that header
-      assert.equal("this is on the response", header_value)
-    end)
-  end)
-
-end)
+)
